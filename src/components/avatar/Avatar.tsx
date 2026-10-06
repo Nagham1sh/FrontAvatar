@@ -2,7 +2,8 @@ import { useLayoutEffect } from 'react';
 import { useGLTF } from '@react-three/drei';
 import type { Object3D, Mesh, SkinnedMesh } from 'three';
 
-export const AVATAR_URL = '/models/avatar.glb';
+export const AVATAR_BASE_URL =
+  'http://127.0.0.1:8000/models/generated_avatar.glb';
 
 function isRenderableMesh(object: Object3D): object is Mesh | SkinnedMesh {
   return (
@@ -11,8 +12,12 @@ function isRenderableMesh(object: Object3D): object is Mesh | SkinnedMesh {
   );
 }
 
-export function Avatar() {
-  const { scene } = useGLTF(AVATAR_URL);
+type AvatarProps = {
+  avatarUrl?: string;
+};
+
+export function Avatar({ avatarUrl = AVATAR_BASE_URL }: AvatarProps) {
+  const { scene } = useGLTF(avatarUrl);
 
   useLayoutEffect(() => {
     scene.traverse((object) => {
@@ -27,4 +32,4 @@ export function Avatar() {
   return <primitive object={scene} />;
 }
 
-useGLTF.preload(AVATAR_URL);
+useGLTF.preload(AVATAR_BASE_URL);

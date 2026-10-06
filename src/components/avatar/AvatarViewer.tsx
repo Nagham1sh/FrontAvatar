@@ -7,18 +7,21 @@ import { Avatar } from './Avatar';
 const CAMERA_POSITION: [number, number, number] = [0, 1.1, 3.6];
 const CAMERA_TARGET: [number, number, number] = [0, 0.9, 0];
 
+type AvatarViewerProps = {
+  avatarUrl?: string;
+};
+
 /**
  * Canvas + scene. Created once; avatar changes happen inside the scene graph,
  * never by re-mounting the Canvas.
  */
-export function AvatarViewer() {
+export function AvatarViewer({ avatarUrl }: AvatarViewerProps) {
   const controls = useRef<OrbitControlsImpl>(null);
 
   const resetCamera = useCallback(() => {
     const c = controls.current;
     if (!c) return;
 
-    // With damping on, leftover rotation momentum would be re-applied after the reset.
     const damping = c.enableDamping;
     c.enableDamping = false;
 
@@ -60,7 +63,7 @@ export function AvatarViewer() {
         />
 
         <Suspense fallback={null}>
-          <Avatar />
+          <Avatar avatarUrl={avatarUrl} />
         </Suspense>
 
         <ContactShadows
@@ -94,4 +97,3 @@ export function AvatarViewer() {
     </div>
   );
 }
-
