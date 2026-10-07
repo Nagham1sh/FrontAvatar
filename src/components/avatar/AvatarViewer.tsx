@@ -3,22 +3,23 @@ import { Canvas } from '@react-three/fiber';
 import { ContactShadows, Loader, OrbitControls } from '@react-three/drei';
 import type { OrbitControls as OrbitControlsImpl } from 'three-stdlib';
 import { Avatar } from './Avatar';
+import { Garment } from '../clothing/Garment';
 
 const CAMERA_POSITION: [number, number, number] = [0, 1.1, 3.6];
 const CAMERA_TARGET: [number, number, number] = [0, 0.9, 0];
 
-/**
- * Canvas + scene. Created once; avatar changes happen inside the scene graph,
- * never by re-mounting the Canvas.
- */
-export function AvatarViewer() {
+type AvatarViewerProps = {
+  garmentUrl?: string;
+  showGarment?: boolean;
+};
+
+export function AvatarViewer({ garmentUrl, showGarment = false }: AvatarViewerProps) {
   const controls = useRef<OrbitControlsImpl>(null);
 
   const resetCamera = useCallback(() => {
     const c = controls.current;
     if (!c) return;
 
-    // With damping on, leftover rotation momentum would be re-applied after the reset.
     const damping = c.enableDamping;
     c.enableDamping = false;
 
@@ -61,6 +62,12 @@ export function AvatarViewer() {
 
         <Suspense fallback={null}>
           <Avatar />
+          {garmentUrl && (
+            <Garment
+              url={garmentUrl}
+              enabled={showGarment}
+            />
+          )}
         </Suspense>
 
         <ContactShadows
@@ -94,4 +101,3 @@ export function AvatarViewer() {
     </div>
   );
 }
-
