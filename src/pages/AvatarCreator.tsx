@@ -1,5 +1,10 @@
 import { useEffect, useState } from 'react';
 import { AvatarViewer } from '../components/avatar/AvatarViewer';
+import { SizeSelector } from '../components/clothing/SizeSelector';
+import { FitResult } from '../components/clothing/FitResult';
+import { CLOTHING_SIZES } from '../components/clothing/clothingSizes';
+import { getFitStatus } from '../components/clothing/fitLogic';
+import type { ClothingSize } from '../components/clothing/fitLogic';
 
 const API_URL = 'http://127.0.0.1:8000';
 
@@ -76,6 +81,19 @@ export function AvatarCreator() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string>();
   const [result, setResult] = useState<GeneratedMeasurements>();
+
+  const [selectedSize, setSelectedSize] =
+    useState<ClothingSize>('M');
+
+  const selectedClothing = CLOTHING_SIZES[selectedSize];
+
+  const ease =
+    selectedClothing.chestCm - measurements.chest;
+
+  const fitStatus = getFitStatus(
+    measurements.chest,
+    selectedClothing.chestCm,
+  );
 
   useEffect(() => {
     localStorage.setItem(
@@ -293,10 +311,30 @@ export function AvatarCreator() {
             </p>
           </section>
         )}
+
+        <section>
+          <SizeSelector
+            selectedSize={selectedSize}
+            onSizeChange={setSelectedSize}
+          />
+
+          <p>
+            Selected size:{' '}
+            <strong>{selectedSize}</strong>
+          </p>
+
+          <FitResult
+            status={fitStatus}
+            ease={ease}
+          />
+        </section>
       </aside>
 
       <section className="creator__stage">
-        <AvatarViewer avatarUrl={avatarUrl} />
+        <AvatarViewer
+          avatarUrl={avatarUrl}
+          size={selectedSize}
+        />
       </section>
     </main>
   );

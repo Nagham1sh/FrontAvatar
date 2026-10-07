@@ -14,9 +14,13 @@ function isRenderableMesh(object: Object3D): object is Mesh | SkinnedMesh {
 
 type AvatarProps = {
   avatarUrl?: string;
+  onLoaded?: (object: Object3D) => void;
 };
 
-export function Avatar({ avatarUrl = AVATAR_BASE_URL }: AvatarProps) {
+export function Avatar({
+  avatarUrl = AVATAR_BASE_URL,
+  onLoaded,
+}: AvatarProps) {
   const { scene } = useGLTF(avatarUrl);
 
   useLayoutEffect(() => {
@@ -27,7 +31,9 @@ export function Avatar({ avatarUrl = AVATAR_BASE_URL }: AvatarProps) {
         object.receiveShadow = true;
       }
     });
-  }, [scene]);
+
+    onLoaded?.(scene);
+  }, [scene, onLoaded]);
 
   return <primitive object={scene} />;
 }

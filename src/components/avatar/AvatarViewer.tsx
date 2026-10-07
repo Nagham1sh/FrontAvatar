@@ -1,22 +1,31 @@
-import { Suspense, useCallback, useRef } from 'react';
+import { Suspense, useCallback, useRef, useState } from 'react';
 import { Canvas } from '@react-three/fiber';
 import { ContactShadows, Loader, OrbitControls } from '@react-three/drei';
 import type { OrbitControls as OrbitControlsImpl } from 'three-stdlib';
+import type { Object3D } from 'three';
 import { Avatar } from './Avatar';
+import { Shirt } from './Shirt';
 
 const CAMERA_POSITION: [number, number, number] = [0, 1.1, 3.6];
 const CAMERA_TARGET: [number, number, number] = [0, 0.9, 0];
 
+type ShirtSize = 'S' | 'M' | 'L' | 'XL';
+
 type AvatarViewerProps = {
   avatarUrl?: string;
+  size?: ShirtSize;
 };
 
 /**
  * Canvas + scene. Created once; avatar changes happen inside the scene graph,
  * never by re-mounting the Canvas.
  */
-export function AvatarViewer({ avatarUrl }: AvatarViewerProps) {
+export function AvatarViewer({
+  avatarUrl,
+  size = 'M',
+}: AvatarViewerProps) {
   const controls = useRef<OrbitControlsImpl>(null);
+  const [avatarObj, setAvatarObj] = useState<Object3D | null>(null);
 
   const resetCamera = useCallback(() => {
     const c = controls.current;
@@ -63,7 +72,17 @@ export function AvatarViewer({ avatarUrl }: AvatarViewerProps) {
         />
 
         <Suspense fallback={null}>
-          <Avatar avatarUrl={avatarUrl} />
+          <Avatar
+            avatarUrl={avatarUrl}
+            onLoaded={setAvatarObj}
+          />
+
+          {avatarObj && (
+            <Shirt
+              size={size}
+              avatar={avatarObj}
+            />
+          )}
         </Suspense>
 
         <ContactShadows
