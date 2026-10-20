@@ -5,6 +5,8 @@ import { FitResult } from '../components/clothing/FitResult';
 import { CLOTHING_SIZES } from '../components/clothing/clothingSizes';
 import { getFitStatus } from '../components/clothing/fitLogic';
 import type { ClothingSize } from '../components/clothing/fitLogic';
+import { IncomingGarmentPanel } from '../integration/fittingRoom/IncomingGarmentPanel';
+import { ErrorBoundary } from '../components/common/ErrorBoundary';
 
 const API_URL = 'http://127.0.0.1:8000';
 
@@ -328,13 +330,17 @@ export function AvatarCreator() {
             ease={ease}
           />
         </section>
+
+        <IncomingGarmentPanel />
       </aside>
 
       <section className="creator__stage">
-        <AvatarViewer
-          avatarUrl={avatarUrl}
-          size={selectedSize}
-        />
+        <ErrorBoundary key={avatarUrl} title="تعذّر تحميل الأفاتار">
+          <AvatarViewer
+            avatarUrl={avatarUrl}
+            size={selectedSize}
+          />
+        </ErrorBoundary>
       </section>
     </main>
   );

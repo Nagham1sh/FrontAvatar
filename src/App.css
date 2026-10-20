@@ -1,0 +1,112 @@
+.app {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+.app-nav {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 8px 16px;
+  background: var(--panel);
+  border-bottom: 1px solid var(--border);
+  flex-wrap: wrap;
+}
+
+.app-nav__brand {
+  font-weight: 700;
+  margin-inline-end: auto;
+  font-size: 15px;
+}
+
+.app-nav a {
+  padding: 6px 14px;
+  border-radius: 8px;
+  color: var(--muted);
+  text-decoration: none;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.app-nav a:hover {
+  color: var(--text);
+  background: var(--bg);
+}
+
+.app-nav a[aria-current='page'] {
+  color: var(--accent);
+  background: #eaf1ff;
+}
+
+.app__page {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+}
+
+.app-error {
+  padding: 32px 16px;
+  text-align: center;
+}
+
+/* Fitting-room side: garment received from the wardrobe dashboard. */
+.incoming-garment {
+  margin-top: 20px;
+  padding: 14px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--bg);
+}
+
+.incoming-garment h2 {
+  font-size: 15px;
+  margin: 0 0 8px;
+}
+
+.incoming-garment__head {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+}
+
+.incoming-garment__head img {
+  width: 56px;
+  height: 56px;
+  object-fit: contain;
+  border-radius: 8px;
+  background: var(--panel);
+  border: 1px solid var(--border);
+}
+
+.incoming-garment__head p {
+  margin: 2px 0 0;
+}
+
+.incoming-garment__table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12.5px;
+  margin: 10px 0;
+  display: block;
+  overflow-x: auto;
+}
+
+.incoming-garment__table caption {
+  text-align: start;
+  font-size: 12.5px;
+}
+
+.incoming-garment__table th,
+.incoming-garment__table td {
+  padding: 4px 6px;
+  border-bottom: 1px solid var(--border);
+  text-align: start;
+  white-space: nowrap;
+}
+
+@media (max-width: 760px) {
+  .app-nav__brand {
+    width: 100%;
+  }
+}
