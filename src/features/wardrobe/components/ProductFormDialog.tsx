@@ -1,11 +1,12 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import type { FormEvent } from 'react';
 import { suggestedStretch } from '../fabrics';
-import { FIT_LABELS, GARMENT_TYPE_LABELS, STRETCH_LABELS } from '../garmentCatalog';
-import { DESCRIPTION_MAX, NAME_MAX, hasErrors, measurementWarnings, validateProductDraft } from '../validation';
+import { FIT_LABELS, GARMENT_TYPE_LABELS, SAMPLE_MEASUREMENTS, STRETCH_LABELS } from '../garmentCatalog';
+import { DESCRIPTION_MAX, hasErrors, measurementWarnings, validateProductDraft } from '../validation';
 import type { ValidationErrors } from '../validation';
-import { FIT_TYPES, GARMENT_TYPES, STRETCH_LEVELS, draftFromProduct, emptyDraft } from '../types';
+import { FIT_TYPES, GARMENT_TYPES, STRETCH_LEVELS, completeDraft, draftFromProduct, emptyDraft } from '../types';
 import type { ClothingProduct, GarmentMeasurements, ProductDraft, SizeLabel } from '../types';
+import { ErrorBoundary } from '../../../components/common/ErrorBoundary';
 import { storageErrorMessage } from '../useProducts';
 import { estimateGarmentColor } from '../viewer/photoTexture';
 import { FabricPicker, Field, FieldError, ImageField, MeasurementsEditor, ModelField } from './FormControls';
@@ -20,7 +21,9 @@ type ProductFormDialogProps = {
 export function ProductFormDialog({ target, onClose, onSubmit }: ProductFormDialogProps) {
   const dialog = useRef<HTMLDialogElement>(null);
   const form = useRef<HTMLFormElement>(null);
-  const [draft, setDraft] = useState<ProductDraft>(emptyDraft);
+  const [rawDraft, setDraft] = useState<ProductDraft>(emptyDraft);
+  // Render from a completed copy: even state kept by a tab across an app update renders safely.
+  const draft = useMemo(() => completeDraft(rawDraft), [rawDraft]);
   const [errors, setErrors] = useState<ValidationErrors>({});
   const [submitted, setSubmitted] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -43,6 +46,7 @@ export function ProductFormDialog({ target, onClose, onSubmit }: ProductFormDial
       setStretchTouched(Boolean(existing));
       if (!el.open) el.showModal();
       form.current?.scrollTo({ top: 0 });
+      requestAnimationFrame(() => form.current?.querySelector<HTMLInputElement>('input[name="garment-type"]:checked')?.focus());
     } else if (el.open) {
       el.close();
     }
@@ -55,7 +59,7 @@ export function ProductFormDialog({ target, onClose, onSubmit }: ProductFormDial
 
   /** Functional form keeps async updates (image processing) from overwriting newer edits. */
   function patch(update: Partial<ProductDraft> | ((current: ProductDraft) => Partial<ProductDraft>)) {
-    setDraft((current) => ({ ...current, ...(typeof update === 'function' ? update(current) : update) }));
+    setDraft((current) => completeDraft({ ...current, ...(typeof update === 'function' ? update(current) : update) }));
   }
 
   function setMeasurement(size: SizeLabel, key: keyof GarmentMeasurements, value: number | undefined) {
@@ -109,6 +113,7 @@ export function ProductFormDialog({ target, onClose, onSubmit }: ProductFormDial
         if (!saving) onClose();
       }}
     >
+      <ErrorBoundary key={existing?.id ?? String(target)} title="حدث خطأ في نموذج القطعة">
       <form ref={form} className="wd-dialog__body" onSubmit={handleSubmit} noValidate>
         <header className="wd-dialog__header">
           <h2 id="product-form-title">{existing ? `تعديل: ${existing.name}` : 'إضافة قطعة ملابس جديدة'}</h2>
@@ -124,56 +129,47 @@ export function ProductFormDialog({ target, onClose, onSubmit }: ProductFormDial
         )}
 
         <section className="wd-form-section">
-          <h3>المعلومات الأساسية</h3>
-          <div className="wd-grid-2">
-            <Field label="اسم القطعة" required error={errors.name}>
-              {({ inputId, describedBy, invalid }) => (
+          <h3>نوع القطعة</h3>
+          <div className="wd-type-grid" role="radiogroup" aria-label="نوع القطعة" data-error-key="type">
+            {GARMENT_TYPES.map((t) => (
+              <label key={t} className={`wd-type${draft.type === t ? ' wd-type--active' : ''}`}>
                 <input
-                  id={inputId}
-                  className="wd-input"
-                  value={draft.name}
-                  maxLength={NAME_MAX + 20}
-                  placeholder="مثال: قميص كتان مطرّز"
-                  aria-invalid={invalid}
-                  aria-describedby={describedBy}
-                  data-error-key="name"
-                  onChange={(e) => patch({ name: e.target.value })}
+                  type="radio"
+                  name="garment-type"
+                  className="wd-visually-hidden"
+                  value={t}
+                  checked={draft.type === t}
+                  onChange={() => patch({ type: t })}
                 />
-              )}
-            </Field>
-            <Field label="نوع القطعة" required error={errors.type}>
-              {({ inputId, describedBy, invalid }) => (
-                <select
-                  id={inputId}
-                  className="wd-input"
-                  value={draft.type}
-                  aria-invalid={invalid}
-                  aria-describedby={describedBy}
-                  onChange={(e) => patch({ type: e.target.value as ProductDraft['type'] })}
-                >
-                  {GARMENT_TYPES.map((t) => (
-                    <option key={t} value={t}>
-                      {GARMENT_TYPE_LABELS[t]}
-                    </option>
-                  ))}
-                </select>
-              )}
-            </Field>
+                {GARMENT_TYPE_LABELS[t]}
+              </label>
+            ))}
           </div>
-          <Field label="وصف القطعة" hint={`${draft.description.length} / ${DESCRIPTION_MAX}`} error={errors.description}>
-            {({ inputId, describedBy, invalid }) => (
-              <textarea
-                id={inputId}
-                className="wd-input"
-                rows={3}
-                value={draft.description}
-                placeholder="تفاصيل التصميم، القصّة، طريقة العناية…"
-                aria-invalid={invalid}
-                aria-describedby={describedBy}
-                onChange={(e) => patch({ description: e.target.value })}
-              />
-            )}
-          </Field>
+          <FieldError id="type-error" message={errors.type} />
+          <p className="wd-hint">
+            {existing
+              ? `اسم القطعة: ${existing.name}`
+              : 'لا حاجة لكتابة اسم: تُسمّى القطعة تلقائيًا حسب نوعها، مثل «فستان 1». بعد اختيار النوع تظهر قياساته المهمة مباشرة.'}
+          </p>
+        </section>
+
+        <section className="wd-form-section">
+          <h3>القياسات المهمة — {GARMENT_TYPE_LABELS[draft.type]}</h3>
+          <MeasurementsEditor
+            type={draft.type}
+            sizes={draft.sizes}
+            measurements={draft.measurements}
+            errors={errors}
+            warnings={measurementWarnings(draft)}
+            onSizesChange={(sizes) => patch({ sizes })}
+            onFillSample={() =>
+              patch((current) => ({
+                sizes: ['S', 'M', 'L'],
+                measurements: structuredClone(SAMPLE_MEASUREMENTS[current.type]),
+              }))
+            }
+            onMeasurementChange={setMeasurement}
+          />
         </section>
 
         <section className="wd-form-section">
@@ -295,25 +291,26 @@ export function ProductFormDialog({ target, onClose, onSubmit }: ProductFormDial
         </section>
 
         <section className="wd-form-section">
-          <h3>المقاسات وقياسات القطعة</h3>
-          <MeasurementsEditor
-            type={draft.type}
-            sizes={draft.sizes}
-            measurements={draft.measurements}
-            errors={errors}
-            warnings={measurementWarnings(draft)}
-            onSizesChange={(sizes) => patch({ sizes })}
-            onMeasurementChange={setMeasurement}
-          />
-        </section>
-
-        <section className="wd-form-section">
           <h3>النموذج ثلاثي الأبعاد (اختياري)</h3>
           <ModelField value={draft.model} onChange={(model) => patch({ model })} />
         </section>
 
         <section className="wd-form-section">
           <h3>معلومات إضافية</h3>
+          <Field label="وصف القطعة" hint={`${draft.description.length} / ${DESCRIPTION_MAX}`} error={errors.description}>
+            {({ inputId, describedBy, invalid }) => (
+              <textarea
+                id={inputId}
+                className="wd-input"
+                rows={3}
+                value={draft.description}
+                placeholder="تفاصيل التصميم، القصّة، طريقة العناية…"
+                aria-invalid={invalid}
+                aria-describedby={describedBy}
+                onChange={(e) => patch({ description: e.target.value })}
+              />
+            )}
+          </Field>
           <div className="wd-grid-2">
             <Field label="السعر (₪)" error={errors['extra.price']}>
               {({ inputId, describedBy, invalid }) => (
@@ -382,6 +379,7 @@ export function ProductFormDialog({ target, onClose, onSubmit }: ProductFormDial
           </button>
         </footer>
       </form>
+      </ErrorBoundary>
     </dialog>
   );
 }

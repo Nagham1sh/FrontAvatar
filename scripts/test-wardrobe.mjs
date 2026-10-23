@@ -9,7 +9,7 @@ const load = (path) => server.ssrLoadModule(path);
 
 const { validateProductDraft, normalizeDraft, measurementErrorKey, measurementWarnings } = await load('/src/features/wardrobe/validation.ts');
 const { emptyDraft, GARMENT_TYPES, withDefaults } = await load('/src/features/wardrobe/types.ts');
-const { MEASUREMENTS_BY_TYPE, MEASUREMENT_LABELS, flatToCircumference, circumferenceToFlat } = await load('/src/features/wardrobe/garmentCatalog.ts');
+const { MEASUREMENTS_BY_TYPE, MEASUREMENT_LABELS, flatToCircumference, circumferenceToFlat, autoProductName, isAutoProductName, SAMPLE_MEASUREMENTS } = await load('/src/features/wardrobe/garmentCatalog.ts');
 const { suggestedStretch } = await load('/src/features/wardrobe/fabrics.ts');
 const { buildGarmentOutline } = await load('/src/features/wardrobe/viewer/garmentOutline.ts');
 const { buildFittingRoomPayload } = await load('/src/features/wardrobe/fittingRoomExport.ts');
@@ -39,7 +39,7 @@ test('valid draft has no errors', () => {
 
 test('empty draft reports required fields', () => {
   const errors = validateProductDraft(emptyDraft());
-  assert.ok(errors.name);
+  assert.equal(errors.name, undefined, 'name is generated, so it is not required');
   assert.ok(errors['images.front']);
   assert.ok(errors.sizes);
 });
@@ -199,6 +199,28 @@ test('products saved before stretch/fit existed get defaults', () => {
   assert.equal(upgraded.stretch, 'none');
   assert.equal(upgraded.fit, 'regular');
   assert.equal(buildFittingRoomPayload(upgraded).ok, true);
+});
+
+test('products are named automatically after their type', () => {
+  assert.equal(autoProductName('dress', []), 'فستان 1');
+  assert.equal(autoProductName('dress', ['فستان 1', 'فستان 2', 'بنطلون 1']), 'فستان 3');
+  assert.equal(autoProductName('dress', ['فستان 5']), 'فستان 6', 'continues after the highest number, even after deletions');
+  assert.equal(autoProductName('pants', ['فستان 1', 'تيشيرت قطن']), 'بنطلون 1');
+  assert.ok(isAutoProductName('تنورة 12'));
+  assert.ok(!isAutoProductName('تيشيرت قطن مطرّز'));
+});
+
+test('sample measurements are valid and trigger no warnings for every type', () => {
+  for (const type of GARMENT_TYPES) {
+    const sample = SAMPLE_MEASUREMENTS[type];
+    const draft = { ...validDraft(), type, sizes: ['S', 'M', 'L'], measurements: structuredClone(sample) };
+    assert.deepEqual(validateProductDraft(draft), {}, type);
+    assert.deepEqual(measurementWarnings(draft), [], type);
+    const allowed = MEASUREMENTS_BY_TYPE[type].map((f) => f.key);
+    for (const size of ['S', 'M', 'L']) {
+      for (const key of Object.keys(sample[size])) assert.ok(allowed.includes(key), `${type}.${size}.${key} belongs to the type`);
+    }
+  }
 });
 
 let failed = 0;

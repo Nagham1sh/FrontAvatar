@@ -1,5 +1,5 @@
 import { useId, useState } from 'react';
-import type { ReactNode } from 'react';
+import type { ClipboardEvent, DragEvent, ReactNode } from 'react';
 import { FABRICS } from '../fabrics';
 import { FileProcessingError, formatBytes, imageFileToDataUrl, modelFileToDataUrl } from '../fileProcessing';
 import { MEASUREMENTS_BY_TYPE, MEASUREMENT_LABELS, MEASURING_TIPS, PROJECT_MODELS } from '../garmentCatalog';
@@ -62,6 +62,7 @@ type ImageFieldProps = {
 export function ImageField({ label, required, value, error, errorKey, onChange }: ImageFieldProps) {
   const inputId = useId();
   const [busy, setBusy] = useState(false);
+  const [dragging, setDragging] = useState(false);
   const [localError, setLocalError] = useState<string>();
   const shownError = localError ?? error;
 
@@ -78,17 +79,48 @@ export function ImageField({ label, required, value, error, errorKey, onChange }
     }
   }
 
+  // Besides the system file picker, a photo can be dropped on the box or pasted into it.
+  function handleDrop(e: DragEvent<HTMLDivElement>) {
+    e.preventDefault();
+    setDragging(false);
+    const file = e.dataTransfer.files?.[0];
+    if (file) void handleFile(file);
+    else setLocalError('لم يتم إفلات ملف. اسحب صورة من مجلد على جهازك.');
+  }
+
+  function handlePaste(e: ClipboardEvent<HTMLDivElement>) {
+    const file = [...e.clipboardData.files].find((f) => f.type.startsWith('image/'));
+    if (!file) {
+      setLocalError('لا توجد صورة في الحافظة. انسخ صورة أولًا ثم الصقها هنا.');
+      return;
+    }
+    e.preventDefault();
+    void handleFile(file);
+  }
+
   return (
     <div className="wd-field" data-error-key={errorKey}>
       <span className="wd-field__label">
         {label}
         {required && <span className="wd-required" aria-hidden="true"> *</span>}
       </span>
-      <div className={`wd-image-field${shownError ? ' wd-image-field--invalid' : ''}`}>
+      <div
+        className={`wd-image-field${shownError ? ' wd-image-field--invalid' : ''}${dragging ? ' wd-image-field--dragging' : ''}`}
+        tabIndex={0}
+        role="group"
+        aria-label={`${label}: اسحب صورة إلى هنا أو الصقها بـ Ctrl+V`}
+        onDragEnter={(e) => { e.preventDefault(); setDragging(true); }}
+        onDragOver={(e) => { e.preventDefault(); e.dataTransfer.dropEffect = 'copy'; }}
+        onDragLeave={(e) => { if (!e.currentTarget.contains(e.relatedTarget as Node | null)) setDragging(false); }}
+        onDrop={handleDrop}
+        onPaste={handlePaste}
+      >
         {value ? (
           <img src={value} alt={label} />
         ) : (
-          <span className="wd-image-field__empty">{busy ? 'جارٍ المعالجة…' : 'لا توجد صورة'}</span>
+          <span className="wd-image-field__empty">
+            {busy ? 'جارٍ المعالجة…' : dragging ? 'أفلت الصورة هنا' : 'اسحب صورة إلى هنا، أو اضغط هنا ثم الصق (Ctrl+V)'}
+          </span>
         )}
       </div>
       <div className="wd-row">
@@ -151,6 +183,8 @@ type MeasurementsEditorProps = {
   warnings: string[];
   onSizesChange: (sizes: SizeLabel[]) => void;
   onMeasurementChange: (size: SizeLabel, key: keyof GarmentMeasurements, value: number | undefined) => void;
+  /** Fills sizes S/M/L with sample measurements for the current type. */
+  onFillSample: () => void;
 };
 
 type EntryMode = 'circumference' | 'flat';
@@ -163,6 +197,7 @@ export function MeasurementsEditor({
   warnings,
   onSizesChange,
   onMeasurementChange,
+  onFillSample,
 }: MeasurementsEditorProps) {
   const fields = MEASUREMENTS_BY_TYPE[type];
   const ordered = SIZE_LABELS.filter((s) => sizes.includes(s));
@@ -171,12 +206,29 @@ export function MeasurementsEditor({
   const [mode, setMode] = useState<EntryMode>('circumference');
   const isFlat = (key: keyof GarmentMeasurements) => mode === 'flat' && MEASUREMENT_LABELS[key].circumference;
 
+  // The important (required) measurements come first; optional ones on request,
+  // or automatically when one of them already has a value (e.g. when editing).
+  const optional = fields.filter((f) => !f.required);
+  const [showOptional, setShowOptional] = useState(false);
+  const optionalHasValues = optional.some((f) => ordered.some((s) => measurements[s]?.[f.key] !== undefined));
+  const optionalOpen = showOptional || optionalHasValues;
+  const visibleFields = optionalOpen ? fields : fields.filter((f) => f.required);
+
   function toggle(size: SizeLabel) {
     onSizesChange(sizes.includes(size) ? sizes.filter((s) => s !== size) : [...sizes, size]);
   }
 
   return (
     <div className="wd-measurements">
+      <div className="wd-sample">
+        <button type="button" className="wd-btn wd-btn--small wd-btn--ghost" onClick={onFillSample}>
+          تعبئة قياسات تجريبية
+        </button>
+        <span className="wd-hint">
+          يملأ المقاسات S وM وL بقياسات افتراضية لهذا النوع للتجربة (يستبدل القياسات الحالية)؛ يبقى عليك إضافة الصورة.
+        </span>
+      </div>
+
       <div className="wd-field" data-error-key="sizes">
         <span className="wd-field__label">
           المقاسات المتوفرة<span className="wd-required" aria-hidden="true"> *</span>
@@ -245,7 +297,7 @@ export function MeasurementsEditor({
             <thead>
               <tr>
                 <th scope="col">المقاس</th>
-                {fields.map((f) => (
+                {visibleFields.map((f) => (
                   <th key={f.key} scope="col" title={MEASUREMENT_LABELS[f.key].hint}>
                     {isFlat(f.key) ? MEASUREMENT_LABELS[f.key].label.replace('محيط', 'عرض') : MEASUREMENT_LABELS[f.key].label}
                     {f.required && <span className="wd-required" aria-hidden="true"> *</span>}
@@ -258,7 +310,7 @@ export function MeasurementsEditor({
               {ordered.map((size) => (
                 <tr key={size}>
                   <th scope="row">{size}</th>
-                  {fields.map((f) => {
+                  {visibleFields.map((f) => {
                     const key = measurementErrorKey(size, f.key);
                     const value = measurements[size]?.[f.key];
                     const flat = isFlat(f.key);
@@ -288,6 +340,22 @@ export function MeasurementsEditor({
               ))}
             </tbody>
           </table>
+        </div>
+      )}
+
+      {ordered.length > 0 && optional.length > 0 && (
+        <div className="wd-row">
+          {optionalOpen ? (
+            !optionalHasValues && (
+              <button type="button" className="wd-btn wd-btn--small wd-btn--text" onClick={() => setShowOptional(false)}>
+                إخفاء القياسات الإضافية
+              </button>
+            )
+          ) : (
+            <button type="button" className="wd-btn wd-btn--small wd-btn--ghost" onClick={() => setShowOptional(true)}>
+              + قياسات إضافية (اختيارية): {optional.map((f) => MEASUREMENT_LABELS[f.key].label).join('، ')}
+            </button>
+          )}
         </div>
       )}
 

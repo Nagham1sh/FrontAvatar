@@ -111,7 +111,26 @@ export function draftFromProduct(product: ClothingProduct): ProductDraft {
   return structuredClone(draft);
 }
 
+/**
+ * Fills every missing or unknown field with its default, so data written by an
+ * older version of the app (saved products, or form state kept by an open tab
+ * across an update) can never break rendering.
+ */
+export function completeDraft<T extends Partial<ProductDraft>>(draft: T): T & ProductDraft {
+  const base = emptyDraft();
+  return {
+    ...base,
+    ...draft,
+    stretch: STRETCH_LEVELS.includes(draft.stretch as StretchLevel) ? (draft.stretch as StretchLevel) : base.stretch,
+    fit: FIT_TYPES.includes(draft.fit as FitType) ? (draft.fit as FitType) : base.fit,
+    images: { ...base.images, ...draft.images },
+    sizes: Array.isArray(draft.sizes) ? draft.sizes : base.sizes,
+    measurements: draft.measurements ?? base.measurements,
+    extra: { ...base.extra, ...draft.extra },
+  };
+}
+
 /** Products saved before a field existed get its default value. */
 export function withDefaults(product: ClothingProduct): ClothingProduct {
-  return { ...product, stretch: product.stretch ?? 'none', fit: product.fit ?? 'regular' };
+  return completeDraft(product);
 }

@@ -52,9 +52,8 @@ export function validateProductDraft(draft: ProductDraft): ValidationErrors {
   const errors: ValidationErrors = {};
   const name = draft.name.trim();
 
-  if (!name) errors.name = 'اسم القطعة مطلوب.';
-  else if (name.length < 2) errors.name = 'اسم القطعة قصير جدًا (حرفان على الأقل).';
-  else if (name.length > NAME_MAX) errors.name = `اسم القطعة طويل جدًا (الحد الأقصى ${NAME_MAX} حرفًا).`;
+  // The name is generated on save («فستان 3»), so an empty name is fine here.
+  if (name.length > NAME_MAX) errors.name = `اسم القطعة طويل جدًا (الحد الأقصى ${NAME_MAX} حرفًا).`;
 
   if (!GARMENT_TYPES.includes(draft.type)) errors.type = 'اختر نوع القطعة.';
 

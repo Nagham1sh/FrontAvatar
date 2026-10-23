@@ -1,5 +1,5 @@
 import { CLOTHING_SIZES } from '../../components/clothing/clothingSizes';
-import type { FitType, GarmentType, MeasurementKey, ModelRef, StretchLevel } from './types';
+import type { FitType, GarmentMeasurements, GarmentType, MeasurementKey, ModelRef, SizeLabel, StretchLevel } from './types';
 
 export const GARMENT_TYPE_LABELS: Record<GarmentType, string> = {
   tshirt: 'تيشيرت',
@@ -142,6 +142,59 @@ export const MEASUREMENTS_BY_TYPE: Record<GarmentType, MeasurementField[]> = {
     { key: 'hips', required: true },
     { key: 'length', required: true },
   ],
+};
+
+/**
+ * Products have no name field: each gets "<type> <number>", e.g. «فستان 3».
+ * The number continues after the highest one already used for that type.
+ */
+export function autoProductName(type: GarmentType, existingNames: string[]): string {
+  const base = GARMENT_TYPE_LABELS[type];
+  const pattern = new RegExp(`^${base} (\\d+)$`);
+  const used = existingNames.map((name) => Number(pattern.exec(name)?.[1] ?? 0));
+  return `${base} ${Math.max(0, ...used) + 1}`;
+}
+
+/** True for names produced by autoProductName (of any type). */
+export function isAutoProductName(name: string): boolean {
+  return Object.values(GARMENT_TYPE_LABELS).some((base) => new RegExp(`^${base} \\d+$`).test(name));
+}
+
+/**
+ * Plausible garment measurements (cm, regular cut) for trying the form out.
+ * Only filled in when the owner presses «تعبئة قياسات تجريبية».
+ */
+export const SAMPLE_MEASUREMENTS: Record<GarmentType, Partial<Record<SizeLabel, GarmentMeasurements>>> = {
+  tshirt: {
+    S: { chest: 96, length: 68, shoulder: 42, waist: 92, sleeveLength: 19, armhole: 44 },
+    M: { chest: 102, length: 70, shoulder: 44, waist: 98, sleeveLength: 20, armhole: 46 },
+    L: { chest: 108, length: 72, shoulder: 46, waist: 104, sleeveLength: 21, armhole: 48 },
+  },
+  shirt: {
+    S: { chest: 100, shoulder: 43, length: 73, waist: 94, hips: 98, sleeveLength: 60, neck: 38, armhole: 46 },
+    M: { chest: 106, shoulder: 45, length: 75, waist: 100, hips: 104, sleeveLength: 62, neck: 40, armhole: 48 },
+    L: { chest: 112, shoulder: 47, length: 77, waist: 106, hips: 110, sleeveLength: 63, neck: 42, armhole: 50 },
+  },
+  jacket: {
+    S: { chest: 104, shoulder: 44, length: 66, sleeveLength: 61, waist: 98, hips: 102, armhole: 48 },
+    M: { chest: 110, shoulder: 46, length: 68, sleeveLength: 63, waist: 104, hips: 108, armhole: 50 },
+    L: { chest: 116, shoulder: 48, length: 70, sleeveLength: 64, waist: 110, hips: 114, armhole: 52 },
+  },
+  dress: {
+    S: { chest: 88, waist: 72, hips: 96, length: 120, shoulder: 36, sleeveLength: 58, neck: 40, armhole: 42 },
+    M: { chest: 94, waist: 78, hips: 102, length: 122, shoulder: 38, sleeveLength: 59, neck: 42, armhole: 44 },
+    L: { chest: 100, waist: 84, hips: 108, length: 124, shoulder: 40, sleeveLength: 60, neck: 44, armhole: 46 },
+  },
+  pants: {
+    S: { waist: 72, hips: 96, inseam: 76, length: 100, thigh: 58, legOpening: 36 },
+    M: { waist: 78, hips: 102, inseam: 77, length: 102, thigh: 62, legOpening: 38 },
+    L: { waist: 84, hips: 108, inseam: 78, length: 104, thigh: 66, legOpening: 40 },
+  },
+  skirt: {
+    S: { waist: 68, hips: 94, length: 60 },
+    M: { waist: 74, hips: 100, length: 62 },
+    L: { waist: 80, hips: 106, length: 64 },
+  },
 };
 
 /** A flat-laid garment shows half its circumference. */

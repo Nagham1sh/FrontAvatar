@@ -89,10 +89,10 @@ export function ProductDetails({
         <dl className="wd-info">
           <dt>القماش</dt>
           <dd>
-            {fabricDisplayName(product.fabric, product.fabricNote)} · {STRETCH_LABELS[product.stretch].label}
+            {fabricDisplayName(product.fabric, product.fabricNote)} · {STRETCH_LABELS[product.stretch]?.label ?? ''}
           </dd>
           <dt>نوع القصّة</dt>
-          <dd>{FIT_LABELS[product.fit].label}</dd>
+          <dd>{FIT_LABELS[product.fit]?.label ?? ''}</dd>
           <dt>اللون</dt>
           <dd>
             <span className="wd-dot" style={{ background: product.color }} aria-hidden="true" />{' '}

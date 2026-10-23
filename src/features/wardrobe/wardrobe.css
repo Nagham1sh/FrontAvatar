@@ -298,3 +298,20 @@ textarea.wd-input { resize: vertical; }
 .wd-alert--warning { background: #fffbeb; color: #92400e; border: 1px solid #fde68a; font-size: 13px; }
 .wd-alert--warning ul { margin: 6px 0 0; padding-inline-start: 18px; }
 .wd-cell-note { display: block; font-size: 11px; color: var(--muted); margin-top: 2px; white-space: nowrap; }
+
+/* ---------- Garment type picker (first step of the form) ---------- */
+.wd-type-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(110px, 1fr)); gap: 8px; }
+.wd-type {
+  display: flex; align-items: center; justify-content: center; min-height: 48px; padding: 8px 12px;
+  border: 1px solid var(--border); border-radius: 10px; background: var(--panel);
+  font-size: 15px; font-weight: 600; cursor: pointer; text-align: center;
+}
+.wd-type:hover { border-color: var(--accent); }
+.wd-type--active { border-color: var(--accent); background: var(--accent); color: #fff; }
+.wd-type:focus-within { outline: 3px solid color-mix(in srgb, var(--accent) 45%, transparent); outline-offset: 2px; }
+.wd-sample { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; padding: 10px 12px; border: 1px dashed var(--accent); border-radius: 10px; background: var(--wd-accent-soft); }
+.wd-sample .wd-hint { margin: 0; flex: 1 1 240px; }
+.wd-image-field { cursor: copy; transition: border-color 0.15s, background 0.15s; }
+.wd-image-field:focus { outline: 3px solid color-mix(in srgb, var(--accent) 45%, transparent); outline-offset: 2px; }
+.wd-image-field--dragging { border-color: var(--accent); border-style: solid; background: var(--wd-accent-soft); }
+.wd-image-field__empty { padding: 0 12px; text-align: center; }

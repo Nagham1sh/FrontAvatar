@@ -27,23 +27,55 @@ export async function imageFileToDataUrl(file: File): Promise<string> {
     throw new FileProcessingError('حجم الصورة كبير جدًا (الحد الأقصى 15 ميغابايت).');
   }
 
+  return withTimeout(
+    downscaleToDataUrl(file),
+    PROCESSING_TIMEOUT_MS,
+    'استغرقت معالجة الصورة وقتًا طويلًا. أغلق التبويبات غير المستخدمة أو جرّب صورة أصغر.',
+  );
+}
+
+const PROCESSING_TIMEOUT_MS = 20_000;
+
+/** Never leave the form waiting forever: reject with a clear message instead. */
+function withTimeout<T>(work: Promise<T>, ms: number, message: string): Promise<T> {
+  return new Promise<T>((resolve, reject) => {
+    const timer = setTimeout(() => reject(new FileProcessingError(message)), ms);
+    work.then(
+      (value) => { clearTimeout(timer); resolve(value); },
+      (error) => { clearTimeout(timer); reject(error); },
+    );
+  });
+}
+
+async function downscaleToDataUrl(file: File): Promise<string> {
   const objectUrl = URL.createObjectURL(file);
+  let bitmap: ImageBitmap | null = null;
   try {
     const image = await loadImage(objectUrl);
     const scale = Math.min(1, IMAGE_MAX_DIMENSION / Math.max(image.naturalWidth, image.naturalHeight));
     const width = Math.max(1, Math.round(image.naturalWidth * scale));
     const height = Math.max(1, Math.round(image.naturalHeight * scale));
 
+    // Decoding straight to the target size keeps memory low for large phone photos.
+    if (typeof createImageBitmap === 'function') {
+      try {
+        bitmap = await createImageBitmap(file, { resizeWidth: width, resizeHeight: height, resizeQuality: 'high' });
+      } catch {
+        bitmap = null; // Fall back to drawing the <img>.
+      }
+    }
+
     const canvas = document.createElement('canvas');
     canvas.width = width;
     canvas.height = height;
     const context = canvas.getContext('2d');
     if (!context) throw new FileProcessingError('المتصفح لا يدعم معالجة الصور.');
-    context.drawImage(image, 0, 0, width, height);
+    context.drawImage(bitmap ?? image, 0, 0, width, height);
 
     // WebP keeps alpha; browsers without WebP encoding fall back to PNG.
     return canvas.toDataURL('image/webp', 0.85);
   } finally {
+    bitmap?.close();
     URL.revokeObjectURL(objectUrl);
   }
 }
