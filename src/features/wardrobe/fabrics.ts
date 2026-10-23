@@ -1,4 +1,4 @@
-import type { FabricId } from './types';
+import type { FabricId, StretchLevel } from './types';
 
 /** Surface pattern used to generate a small bump texture for the 3D preview. */
 export type FabricPattern = 'plain' | 'weave' | 'twill' | 'knit' | 'grain' | 'pile';
@@ -25,7 +25,13 @@ export type FabricInfo = {
   label: string;
   description: string;
   render: FabricRenderProfile;
+  /** Suggested stretch when this fabric is picked; the owner can change it. */
+  defaultStretch?: StretchLevel;
 };
+
+export function suggestedStretch(fabric: FabricId): StretchLevel {
+  return FABRICS[fabric].defaultStretch ?? 'none';
+}
 
 export const FABRICS: Record<FabricId, FabricInfo> = {
   cotton: {
@@ -66,6 +72,7 @@ export const FABRICS: Record<FabricId, FabricInfo> = {
   },
   polyester: {
     id: 'polyester',
+    defaultStretch: 'some',
     label: 'بوليستر',
     description: 'صناعي بلمعة متوسطة',
     render: { roughness: 0.6, sheen: 0.4, sheenRoughness: 0.5, clearcoat: 0.05, opacity: 1, pattern: 'plain', patternRepeat: 50, bumpScale: 0.3 },
@@ -90,6 +97,7 @@ export const FABRICS: Record<FabricId, FabricInfo> = {
   },
   knit: {
     id: 'knit',
+    defaultStretch: 'high',
     label: 'تريكو (محبوك)',
     description: 'نسيج محبوك مرن بغرز ظاهرة',
     render: { roughness: 0.95, sheen: 0.45, sheenRoughness: 0.8, clearcoat: 0, opacity: 1, pattern: 'knit', patternRepeat: 22, bumpScale: 1.8 },

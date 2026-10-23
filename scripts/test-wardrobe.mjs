@@ -7,9 +7,10 @@ import { createServer } from 'vite';
 const server = await createServer({ logLevel: 'error', server: { middlewareMode: true }, appType: 'custom' });
 const load = (path) => server.ssrLoadModule(path);
 
-const { validateProductDraft, normalizeDraft, measurementErrorKey } = await load('/src/features/wardrobe/validation.ts');
-const { emptyDraft, GARMENT_TYPES } = await load('/src/features/wardrobe/types.ts');
-const { MEASUREMENTS_BY_TYPE } = await load('/src/features/wardrobe/garmentCatalog.ts');
+const { validateProductDraft, normalizeDraft, measurementErrorKey, measurementWarnings } = await load('/src/features/wardrobe/validation.ts');
+const { emptyDraft, GARMENT_TYPES, withDefaults } = await load('/src/features/wardrobe/types.ts');
+const { MEASUREMENTS_BY_TYPE, MEASUREMENT_LABELS, flatToCircumference, circumferenceToFlat } = await load('/src/features/wardrobe/garmentCatalog.ts');
+const { suggestedStretch } = await load('/src/features/wardrobe/fabrics.ts');
 const { buildGarmentOutline } = await load('/src/features/wardrobe/viewer/garmentOutline.ts');
 const { buildFittingRoomPayload } = await load('/src/features/wardrobe/fittingRoomExport.ts');
 const { isGarmentPayload, getMeasurementBySize, garmentModelUrl } = await load('/src/integration/fittingRoom/handoff.ts');
@@ -116,7 +117,8 @@ test('export payload contains everything the fitting room needs', () => {
   assert.equal(payload.garment.type, 'tshirt');
   assert.equal(payload.garment.typeLabel, 'تيشيرت');
   assert.equal(payload.garment.category, 'top');
-  assert.deepEqual(payload.garment.fabric, { id: 'linen', label: 'كتان' });
+  assert.deepEqual(payload.garment.fabric, { id: 'linen', label: 'كتان', stretch: 'none' });
+  assert.equal(payload.garment.fit, 'regular');
   assert.equal(payload.garment.images.front, 'data:image/webp;base64,AAAA');
   assert.deepEqual(payload.garment.sizes, [
     { size: 'S', measurementsCm: { chest: 96, length: 68 } },
@@ -142,6 +144,61 @@ test('export is refused without a product or with invalid data', () => {
   const bad = buildFittingRoomPayload(product({ images: { front: null, back: null } }));
   assert.equal(bad.ok, false);
   assert.ok(bad.problems.some((m) => m.includes('الأمام')));
+});
+
+// ---- Rules from the tailor interview ----
+test('flat width x 2 = circumference (garment laid flat shows half)', () => {
+  assert.equal(flatToCircumference(52), 104);
+  assert.equal(flatToCircumference(48.5), 97);
+  assert.equal(circumferenceToFlat(104), 52);
+  for (const key of ['chest', 'waist', 'hips', 'thigh', 'legOpening', 'neck', 'armhole']) assert.equal(MEASUREMENT_LABELS[key].circumference, true, key);
+  for (const key of ['shoulder', 'length', 'sleeveLength', 'inseam']) assert.equal(MEASUREMENT_LABELS[key].circumference, false, key);
+});
+
+test('trousers need waist, hips and leg length; dresses need hips', () => {
+  const req = (t) => MEASUREMENTS_BY_TYPE[t].filter((f) => f.required).map((f) => f.key);
+  assert.ok(['waist', 'hips', 'inseam'].every((k) => req('pants').includes(k)));
+  assert.ok(['chest', 'waist', 'hips', 'length'].every((k) => req('dress').includes(k)));
+  assert.ok(req('shirt').includes('shoulder'));
+  assert.ok(MEASUREMENTS_BY_TYPE.dress.some((f) => f.key === 'sleeveLength'));
+  assert.ok(MEASUREMENTS_BY_TYPE.dress.some((f) => f.key === 'armhole'));
+});
+
+test('warns when a circumference looks like a flat width', () => {
+  const draft = validDraft();
+  draft.measurements.S.chest = 48;
+  const warnings = measurementWarnings(draft);
+  assert.ok(warnings.some((w) => w.includes('96')), warnings.join(' | '));
+  assert.deepEqual(validateProductDraft(draft), {}, 'warnings must not block saving');
+});
+
+test('warns when a bigger size is smaller, or hips < waist', () => {
+  const draft = { ...validDraft(), type: 'dress', sizes: ['S', 'M'],
+    measurements: { S: { chest: 90, waist: 74, hips: 98, length: 110 }, M: { chest: 86, waist: 80, hips: 76, length: 112 } } };
+  const warnings = measurementWarnings(draft);
+  assert.ok(warnings.some((w) => w.includes('محيط الصدر') && w.includes('M')));
+  assert.ok(warnings.some((w) => w.includes('الورك') && w.includes('أصغر من محيط الخصر')));
+  assert.deepEqual(measurementWarnings(validDraft()), []);
+});
+
+test('stretch and fit are validated and exported; knit suggests stretch', () => {
+  assert.equal(suggestedStretch('knit'), 'high');
+  assert.equal(suggestedStretch('denim'), 'none');
+  assert.ok(validateProductDraft({ ...validDraft(), stretch: 'rubber' }).stretch);
+  assert.ok(validateProductDraft({ ...validDraft(), fit: 'huge' }).fit);
+  const check = buildFittingRoomPayload(product({ fabric: 'knit', stretch: 'high', fit: 'slim' }));
+  assert.equal(check.payload.garment.fabric.stretch, 'high');
+  assert.equal(check.payload.garment.fit, 'slim');
+});
+
+test('products saved before stretch/fit existed get defaults', () => {
+  const old = product();
+  delete old.stretch;
+  delete old.fit;
+  const upgraded = withDefaults(old);
+  assert.equal(upgraded.stretch, 'none');
+  assert.equal(upgraded.fit, 'regular');
+  assert.equal(buildFittingRoomPayload(upgraded).ok, true);
 });
 
 let failed = 0;

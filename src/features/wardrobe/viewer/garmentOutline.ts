@@ -38,7 +38,8 @@ function topHalf(type: 'tshirt' | 'shirt' | 'jacket', m: GarmentMeasurements): P
   const neckHalf = clamp(pick(m, 'neck', chest * 0.4) / 2 / Math.PI * 1.15, 5, shoulderHalf * 0.7);
   const neckDrop = type === 'tshirt' ? 8 : type === 'shirt' ? 5 : 13;
   const sleeve = pick(m, 'sleeveLength', type === 'tshirt' ? 20 : 60);
-  const armhole = clamp(chest * 0.23, 14, L * 0.45);
+  // Armhole depth ≈ half the armhole circumference when it is known.
+  const armhole = clamp(pick(m, 'armhole', chest * 0.46) / 2, 14, L * 0.45);
   const angle = (type === 'tshirt' ? 32 : 62) * (Math.PI / 180);
   const sleeveWidth = type === 'tshirt' ? clamp(chest * 0.17, 12, 26) : clamp(chest * 0.11, 9, 18);
 

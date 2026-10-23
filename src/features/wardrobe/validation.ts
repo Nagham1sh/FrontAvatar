@@ -1,5 +1,5 @@
-import { GARMENT_TYPE_LABELS, MEASUREMENTS_BY_TYPE, MEASUREMENT_LABELS } from './garmentCatalog';
-import { FABRIC_IDS, GARMENT_TYPES, SIZE_LABELS } from './types';
+import { GARMENT_TYPE_LABELS, MEASUREMENTS_BY_TYPE, MEASUREMENT_LABELS, flatToCircumference } from './garmentCatalog';
+import { FABRIC_IDS, FIT_TYPES, GARMENT_TYPES, SIZE_LABELS, STRETCH_LEVELS } from './types';
 import type { GarmentMeasurements, ProductDraft, SizeLabel } from './types';
 
 /**
@@ -63,6 +63,9 @@ export function validateProductDraft(draft: ProductDraft): ValidationErrors {
     errors.fabricNote = 'اكتب اسم القماش عند اختيار «أخرى».';
   }
 
+  if (!STRETCH_LEVELS.includes(draft.stretch)) errors.stretch = 'حدّد مرونة القماش.';
+  if (!FIT_TYPES.includes(draft.fit)) errors.fit = 'حدّد نوع القصّة.';
+
   if (!/^#[0-9a-f]{6}$/i.test(draft.color)) errors.color = 'اللون غير صالح.';
 
   if (draft.description.trim().length > DESCRIPTION_MAX) {
@@ -97,6 +100,55 @@ export function validateProductDraft(draft: ProductDraft): ValidationErrors {
   }
 
   return errors;
+}
+
+/** Below this a chest / waist / hip circumference is almost certainly a flat width. */
+const FLAT_WIDTH_SUSPECT_CM = 50;
+
+/**
+ * Non-blocking checks for the measuring mistakes the tailor named: a flat
+ * width entered as a circumference, hips narrower than the waist, and sizes
+ * whose measurements go down as the size goes up.
+ */
+export function measurementWarnings(draft: ProductDraft): string[] {
+  const warnings: string[] = [];
+  if (!GARMENT_TYPES.includes(draft.type)) return warnings;
+  const fields = MEASUREMENTS_BY_TYPE[draft.type].map((f) => f.key);
+  const sizes = SIZE_LABELS.filter((s) => draft.sizes.includes(s));
+
+  for (const size of sizes) {
+    const m = draft.measurements[size] ?? {};
+    for (const key of ['chest', 'waist', 'hips'] as const) {
+      const value = m[key];
+      if (fields.includes(key) && typeof value === 'number' && value > 0 && value < FLAT_WIDTH_SUSPECT_CM) {
+        warnings.push(
+          `${MEASUREMENT_LABELS[key].label} للمقاس ${size} = ${value} سم يبدو عرضًا مسطّحًا (نصف المحيط). هل المقصود ${flatToCircumference(value)} سم؟`,
+        );
+      }
+    }
+    if (
+      fields.includes('hips') &&
+      draft.type !== 'tshirt' &&
+      typeof m.waist === 'number' &&
+      typeof m.hips === 'number' &&
+      m.hips < m.waist
+    ) {
+      warnings.push(`في المقاس ${size} محيط الورك (${m.hips}) أصغر من محيط الخصر (${m.waist}). تأكد من مكان القياس.`);
+    }
+  }
+
+  for (const key of ['chest', 'waist', 'hips'] as const) {
+    for (let i = 1; i < sizes.length; i++) {
+      const smaller = draft.measurements[sizes[i - 1]]?.[key];
+      const larger = draft.measurements[sizes[i]]?.[key];
+      if (fields.includes(key) && typeof smaller === 'number' && typeof larger === 'number' && larger < smaller) {
+        warnings.push(
+          `${MEASUREMENT_LABELS[key].label}: المقاس ${sizes[i]} (${larger}) أصغر من المقاس ${sizes[i - 1]} (${smaller}).`,
+        );
+      }
+    }
+  }
+  return warnings;
 }
 
 export function hasErrors(errors: ValidationErrors): boolean {

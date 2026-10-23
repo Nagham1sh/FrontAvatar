@@ -1,5 +1,6 @@
 import { KeyValueStore, createId } from '../../lib/idb';
 import { normalizeDraft } from './validation';
+import { withDefaults } from './types';
 import type { ClothingProduct, ProductDraft } from './types';
 
 /**
@@ -11,7 +12,7 @@ import type { ClothingProduct, ProductDraft } from './types';
 const store = new KeyValueStore<ClothingProduct>('palestine-tryon-wardrobe', 'products');
 
 export async function listProducts(): Promise<ClothingProduct[]> {
-  const products = await store.getAll();
+  const products = (await store.getAll()).map(withDefaults);
   return products.sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
 }
 

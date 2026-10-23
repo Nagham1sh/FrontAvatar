@@ -1,8 +1,10 @@
 import type {
   FabricId,
+  FitType,
   GarmentMeasurements,
   GarmentType,
   SizeLabel,
+  StretchLevel,
 } from '../../features/wardrobe/types';
 import type { GarmentCategory } from '../../features/wardrobe/garmentCatalog';
 
@@ -32,7 +34,9 @@ export type FittingRoomGarmentPayload = {
     category: GarmentCategory;
     description: string;
     color: string;
-    fabric: { id: FabricId; label: string };
+    fabric: { id: FabricId; label: string; stretch: StretchLevel };
+    /** Intended cut; the ease expected over the body depends on it. */
+    fit: FitType;
     images: { front: string; back: string | null };
     sizes: { size: SizeLabel; measurementsCm: GarmentMeasurements }[];
     model: FittingRoomModel | null;

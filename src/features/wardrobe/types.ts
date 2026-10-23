@@ -19,11 +19,20 @@ export const MEASUREMENT_KEYS = [
   'length',
   'sleeveLength',
   'neck',
+  'armhole',
   'inseam',
   'thigh',
   'legOpening',
 ] as const;
 export type MeasurementKey = (typeof MEASUREMENT_KEYS)[number];
+
+/** Intended cut: how much room the garment leaves over the body. */
+export const FIT_TYPES = ['slim', 'regular', 'loose'] as const;
+export type FitType = (typeof FIT_TYPES)[number];
+
+/** How much the fabric stretches (affects how much ease the garment needs). */
+export const STRETCH_LEVELS = ['none', 'some', 'high'] as const;
+export type StretchLevel = (typeof STRETCH_LEVELS)[number];
 
 /** Garment measurements for one size, in centimetres. */
 export type GarmentMeasurements = Partial<Record<MeasurementKey, number>>;
@@ -62,6 +71,8 @@ export type ClothingProduct = {
   fabric: FabricId;
   /** Free-text fabric name, used when fabric is 'other'. */
   fabricNote: string;
+  stretch: StretchLevel;
+  fit: FitType;
   /** Main colour (hex), used to tint the 3D preview. */
   color: string;
   description: string;
@@ -83,6 +94,8 @@ export function emptyDraft(): ProductDraft {
     type: 'tshirt',
     fabric: 'cotton',
     fabricNote: '',
+    stretch: 'none',
+    fit: 'regular',
     color: '#c9c3b8',
     description: '',
     images: { front: null, back: null },
@@ -94,6 +107,11 @@ export function emptyDraft(): ProductDraft {
 }
 
 export function draftFromProduct(product: ClothingProduct): ProductDraft {
-  const { id: _id, createdAt: _c, updatedAt: _u, ...draft } = product;
+  const { id: _id, createdAt: _c, updatedAt: _u, ...draft } = withDefaults(product);
   return structuredClone(draft);
+}
+
+/** Products saved before a field existed get its default value. */
+export function withDefaults(product: ClothingProduct): ClothingProduct {
+  return { ...product, stretch: product.stretch ?? 'none', fit: product.fit ?? 'regular' };
 }

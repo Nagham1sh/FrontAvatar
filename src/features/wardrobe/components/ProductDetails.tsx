@@ -1,5 +1,5 @@
 import { fabricDisplayName } from '../fabrics';
-import { GARMENT_TYPE_LABELS, MEASUREMENTS_BY_TYPE, MEASUREMENT_LABELS } from '../garmentCatalog';
+import { FIT_LABELS, GARMENT_TYPE_LABELS, MEASUREMENTS_BY_TYPE, MEASUREMENT_LABELS, STRETCH_LABELS } from '../garmentCatalog';
 import type { ClothingProduct, SizeLabel } from '../types';
 import { ClothingViewer } from '../viewer/ClothingViewer';
 
@@ -88,7 +88,11 @@ export function ProductDetails({
         <h3>معلومات القطعة</h3>
         <dl className="wd-info">
           <dt>القماش</dt>
-          <dd>{fabricDisplayName(product.fabric, product.fabricNote)}</dd>
+          <dd>
+            {fabricDisplayName(product.fabric, product.fabricNote)} · {STRETCH_LABELS[product.stretch].label}
+          </dd>
+          <dt>نوع القصّة</dt>
+          <dd>{FIT_LABELS[product.fit].label}</dd>
           <dt>اللون</dt>
           <dd>
             <span className="wd-dot" style={{ background: product.color }} aria-hidden="true" />{' '}

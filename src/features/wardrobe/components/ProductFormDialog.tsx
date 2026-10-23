@@ -1,9 +1,10 @@
 import { useEffect, useRef, useState } from 'react';
 import type { FormEvent } from 'react';
-import { GARMENT_TYPE_LABELS } from '../garmentCatalog';
-import { DESCRIPTION_MAX, NAME_MAX, hasErrors, validateProductDraft } from '../validation';
+import { suggestedStretch } from '../fabrics';
+import { FIT_LABELS, GARMENT_TYPE_LABELS, STRETCH_LABELS } from '../garmentCatalog';
+import { DESCRIPTION_MAX, NAME_MAX, hasErrors, measurementWarnings, validateProductDraft } from '../validation';
 import type { ValidationErrors } from '../validation';
-import { GARMENT_TYPES, draftFromProduct, emptyDraft } from '../types';
+import { FIT_TYPES, GARMENT_TYPES, STRETCH_LEVELS, draftFromProduct, emptyDraft } from '../types';
 import type { ClothingProduct, GarmentMeasurements, ProductDraft, SizeLabel } from '../types';
 import { storageErrorMessage } from '../useProducts';
 import { estimateGarmentColor } from '../viewer/photoTexture';
@@ -26,6 +27,8 @@ export function ProductFormDialog({ target, onClose, onSubmit }: ProductFormDial
   const [saveError, setSaveError] = useState<string>();
   /** Until the owner picks a colour, it follows the front photo. */
   const [colorTouched, setColorTouched] = useState(false);
+  /** Until the owner picks a stretch level, it follows the chosen fabric. */
+  const [stretchTouched, setStretchTouched] = useState(false);
   const existing = target && target !== 'new' ? target : null;
 
   useEffect(() => {
@@ -37,6 +40,7 @@ export function ProductFormDialog({ target, onClose, onSubmit }: ProductFormDial
       setSubmitted(false);
       setSaveError(undefined);
       setColorTouched(Boolean(existing));
+      setStretchTouched(Boolean(existing));
       if (!el.open) el.showModal();
       form.current?.scrollTo({ top: 0 });
     } else if (el.open) {
@@ -198,7 +202,10 @@ export function ProductFormDialog({ target, onClose, onSubmit }: ProductFormDial
         <section className="wd-form-section">
           <h3>القماش واللون</h3>
           <div data-error-key="fabric">
-            <FabricPicker value={draft.fabric} onChange={(fabric) => patch({ fabric })} />
+            <FabricPicker
+              value={draft.fabric}
+              onChange={(fabric) => patch(stretchTouched ? { fabric } : { fabric, stretch: suggestedStretch(fabric) })}
+            />
             <FieldError id="fabric-error" message={errors.fabric} />
           </div>
           <div className="wd-grid-2">
@@ -240,9 +247,50 @@ export function ProductFormDialog({ target, onClose, onSubmit }: ProductFormDial
               )}
             </Field>
           </div>
+          <div className="wd-grid-2">
+            <div className="wd-field" data-error-key="stretch">
+              <span className="wd-field__label">مرونة القماش</span>
+              <div className="wd-segmented" role="group" aria-label="مرونة القماش">
+                {STRETCH_LEVELS.map((level) => (
+                  <button
+                    key={level}
+                    type="button"
+                    aria-pressed={draft.stretch === level}
+                    title={STRETCH_LABELS[level].hint}
+                    onClick={() => {
+                      setStretchTouched(true);
+                      patch({ stretch: level });
+                    }}
+                  >
+                    {STRETCH_LABELS[level].label}
+                  </button>
+                ))}
+              </div>
+              <p className="wd-hint">{STRETCH_LABELS[draft.stretch].hint}</p>
+              <FieldError id="stretch-error" message={errors.stretch} />
+            </div>
+            <div className="wd-field" data-error-key="fit">
+              <span className="wd-field__label">نوع القصّة</span>
+              <div className="wd-segmented" role="group" aria-label="نوع القصّة">
+                {FIT_TYPES.map((fit) => (
+                  <button
+                    key={fit}
+                    type="button"
+                    aria-pressed={draft.fit === fit}
+                    title={FIT_LABELS[fit].hint}
+                    onClick={() => patch({ fit })}
+                  >
+                    {FIT_LABELS[fit].label}
+                  </button>
+                ))}
+              </div>
+              <p className="wd-hint">{FIT_LABELS[draft.fit].hint}</p>
+              <FieldError id="fit-error" message={errors.fit} />
+            </div>
+          </div>
           <p className="wd-hint">
-            نوع القماش يُحفظ كمعلومة عن المنتج ويغيّر مظهر السطح في العارض (اللمعة والخشونة والنسيج) فقط — لا توجد
-            محاكاة فيزيائية لحركة القماش.
+            نوع القماش ومرونته ونوع القصّة تُحفظ مع المنتج وتُرسل إلى غرفة القياس، لأن الزيادة المناسبة على قياس الجسم
+            تعتمد عليها. في العارض يتغيّر مظهر السطح فقط (اللمعة والخشونة والنسيج) — لا توجد محاكاة فيزيائية لحركة القماش.
           </p>
         </section>
 
@@ -253,6 +301,7 @@ export function ProductFormDialog({ target, onClose, onSubmit }: ProductFormDial
             sizes={draft.sizes}
             measurements={draft.measurements}
             errors={errors}
+            warnings={measurementWarnings(draft)}
             onSizesChange={(sizes) => patch({ sizes })}
             onMeasurementChange={setMeasurement}
           />

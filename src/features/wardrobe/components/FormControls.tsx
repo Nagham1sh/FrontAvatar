@@ -2,7 +2,7 @@ import { useId, useState } from 'react';
 import type { ReactNode } from 'react';
 import { FABRICS } from '../fabrics';
 import { FileProcessingError, formatBytes, imageFileToDataUrl, modelFileToDataUrl } from '../fileProcessing';
-import { MEASUREMENTS_BY_TYPE, MEASUREMENT_LABELS, PROJECT_MODELS } from '../garmentCatalog';
+import { MEASUREMENTS_BY_TYPE, MEASUREMENT_LABELS, MEASURING_TIPS, PROJECT_MODELS } from '../garmentCatalog';
 import { measurementErrorKey } from '../validation';
 import type { ValidationErrors } from '../validation';
 import { FABRIC_IDS, SIZE_LABELS } from '../types';
@@ -148,20 +148,28 @@ type MeasurementsEditorProps = {
   sizes: SizeLabel[];
   measurements: Partial<Record<SizeLabel, GarmentMeasurements>>;
   errors: ValidationErrors;
+  warnings: string[];
   onSizesChange: (sizes: SizeLabel[]) => void;
   onMeasurementChange: (size: SizeLabel, key: keyof GarmentMeasurements, value: number | undefined) => void;
 };
+
+type EntryMode = 'circumference' | 'flat';
 
 export function MeasurementsEditor({
   type,
   sizes,
   measurements,
   errors,
+  warnings,
   onSizesChange,
   onMeasurementChange,
 }: MeasurementsEditorProps) {
   const fields = MEASUREMENTS_BY_TYPE[type];
   const ordered = SIZE_LABELS.filter((s) => sizes.includes(s));
+  // A garment laid flat shows half of each circumference; in "flat" mode the
+  // owner types that width and the stored value is always the full circumference.
+  const [mode, setMode] = useState<EntryMode>('circumference');
+  const isFlat = (key: keyof GarmentMeasurements) => mode === 'flat' && MEASUREMENT_LABELS[key].circumference;
 
   function toggle(size: SizeLabel) {
     onSizesChange(sizes.includes(size) ? sizes.filter((s) => s !== size) : [...sizes, size]);
@@ -190,8 +198,43 @@ export function MeasurementsEditor({
       </div>
 
       <div className="wd-note" role="note">
-        هذه <strong>قياسات قطعة الملابس نفسها</strong> بالسنتيمتر (وليست قياسات جسم المستخدم). المحيطات تُقاس حول
-        القطعة كاملة. الحقول المعلّمة بـ * مطلوبة.
+        هذه <strong>قياسات قطعة الملابس نفسها</strong> بالسنتيمتر (وليست قياسات جسم المستخدم). الحقول المعلّمة بـ *
+        مطلوبة، ومرّر المؤشر على اسم القياس لمعرفة مكانه.
+      </div>
+
+      <details className="wd-tips">
+        <summary>طريقة القياس الصحيحة (من خبرة الخياطة)</summary>
+        <ul>
+          {MEASURING_TIPS.map((tip) => (
+            <li key={tip}>{tip}</li>
+          ))}
+        </ul>
+        <dl>
+          {fields.map((f) => (
+            <div key={f.key}>
+              <dt>{MEASUREMENT_LABELS[f.key].label}</dt>
+              <dd>{MEASUREMENT_LABELS[f.key].hint}</dd>
+            </div>
+          ))}
+        </dl>
+      </details>
+
+      <div className="wd-field">
+        <span className="wd-field__label">طريقة إدخال المحيطات</span>
+        <div className="wd-segmented" role="group" aria-label="طريقة إدخال المحيطات">
+          <button type="button" aria-pressed={mode === 'circumference'} onClick={() => setMode('circumference')}>
+            المحيط الكامل
+          </button>
+          <button type="button" aria-pressed={mode === 'flat'} onClick={() => setMode('flat')}>
+            العرض والقطعة مفرودة (× 2 تلقائيًا)
+          </button>
+        </div>
+        {mode === 'flat' && (
+          <p className="wd-hint">
+            أدخل العرض كما يظهر والقطعة مفرودة على سطح مستوٍ؛ يُحفظ المحيط الكامل (العرض × 2). الأطوال وعرض الأكتاف
+            تُدخل كما هي.
+          </p>
+        )}
       </div>
 
       {ordered.length === 0 ? (
@@ -204,9 +247,9 @@ export function MeasurementsEditor({
                 <th scope="col">المقاس</th>
                 {fields.map((f) => (
                   <th key={f.key} scope="col" title={MEASUREMENT_LABELS[f.key].hint}>
-                    {MEASUREMENT_LABELS[f.key].label}
+                    {isFlat(f.key) ? MEASUREMENT_LABELS[f.key].label.replace('محيط', 'عرض') : MEASUREMENT_LABELS[f.key].label}
                     {f.required && <span className="wd-required" aria-hidden="true"> *</span>}
-                    <small>سم</small>
+                    <small>{isFlat(f.key) ? 'سم، مفرودة' : 'سم'}</small>
                   </th>
                 ))}
               </tr>
@@ -218,6 +261,8 @@ export function MeasurementsEditor({
                   {fields.map((f) => {
                     const key = measurementErrorKey(size, f.key);
                     const value = measurements[size]?.[f.key];
+                    const flat = isFlat(f.key);
+                    const shown = value === undefined ? '' : flat ? value / 2 : value;
                     return (
                       <td key={f.key} data-error-key={key}>
                         <input
@@ -229,11 +274,13 @@ export function MeasurementsEditor({
                           aria-label={`${MEASUREMENT_LABELS[f.key].label} — مقاس ${size}`}
                           aria-invalid={Boolean(errors[key])}
                           title={errors[key]}
-                          value={value ?? ''}
-                          onChange={(e) =>
-                            onMeasurementChange(size, f.key, e.target.value === '' ? undefined : Number(e.target.value))
-                          }
+                          value={shown}
+                          onChange={(e) => {
+                            const typed = e.target.value === '' ? undefined : Number(e.target.value);
+                            onMeasurementChange(size, f.key, typed === undefined ? undefined : flat ? typed * 2 : typed);
+                          }}
                         />
+                        {flat && value !== undefined && <small className="wd-cell-note">= {value} محيط</small>}
                       </td>
                     );
                   })}
@@ -253,6 +300,17 @@ export function MeasurementsEditor({
               .map((message) => <li key={message}>{message}</li>),
           )}
         </ul>
+      )}
+
+      {warnings.length > 0 && (
+        <div className="wd-alert wd-alert--warning" role="status">
+          <strong>تنبيهات للمراجعة (لا تمنع الحفظ):</strong>
+          <ul>
+            {warnings.map((w) => (
+              <li key={w}>{w}</li>
+            ))}
+          </ul>
+        </div>
       )}
     </div>
   );
