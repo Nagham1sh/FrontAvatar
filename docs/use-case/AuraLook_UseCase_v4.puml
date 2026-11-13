@@ -1,0 +1,180 @@
+@startuml AuraLook_UseCase_v4
+' AuraLook – Use Case Diagram v4
+' Actors: Visitor, Registered Customer (--|> Visitor), Shop Owner. No external actors.
+' include: base ..> included (mandatory) | extend: extension ..> base (optional)
+
+left to right direction
+skinparam defaultFontName "Segoe UI"
+skinparam defaultFontSize 14
+skinparam shadowing false
+skinparam usecase {
+  BorderColor #1A1A1A
+  ArrowColor #1A1A1A
+}
+skinparam rectangle {
+  BorderColor #1A1A1A
+  BackgroundColor #FBFCFE
+}
+skinparam note {
+  BackgroundColor #FFFBE8
+  BorderColor #8A7A3A
+}
+
+actor "Visitor\nالزائر" as V
+actor "Registered Customer\nالزبون المسجل" as R
+actor "Shop Owner\nصاحب المتجر" as O
+
+R -up-|> V
+
+rectangle "AuraLook System" {
+
+  ' ===== Visitor =====
+  usecase "Browse Stores and View Locations\nتصفح المتاجر وعرض مواقعها" as V1 #EEF3FB
+  usecase "Search Stores\nالبحث عن متجر بالاسم" as V2 #EEF3FB
+  usecase "View Store Information\nعرض معلومات المتجر" as V3 #EEF3FB
+  usecase "Contact Store\nالتواصل مع المتجر" as V4 #EEF3FB
+  usecase "Browse Products\nتصفح المنتجات" as V5 #EEF3FB
+  usecase "Search Products\nالبحث عن المنتجات" as V6 #EEF3FB
+  usecase "Filter Products\nتصفية المنتجات (النوع، السعر، المقاس)" as V7 #EEF3FB
+  usecase "View Product Details\nعرض تفاصيل المنتج" as V8 #EEF3FB
+  usecase "Register Customer\nإنشاء حساب زبون" as V9 #EEF3FB
+
+  ' ===== Registered Customer =====
+  usecase "Set Clothing Preferences\nتحديد تفضيلات الملابس" as R1 #F3EEFB
+  usecase "View Personalized Stores and Products\nعرض المتاجر والمنتجات المتوافقة مع التفضيلات" as R2 #F3EEFB
+  usecase "Generate 3D Avatar\nإنشاء Avatar ثلاثي الأبعاد" as R3 #F3EEFB
+  usecase "Enter Body Measurements\nإدخال قياسات الجسم" as R4 #F3EEFB
+  usecase "Update Body Measurements\nتحديث قياسات الجسم" as R5 #F3EEFB
+  usecase "Virtual Try-On\nالمعاينة الافتراضية للملابس" as R6 #F3EEFB
+  usecase "View Garment on Avatar\nعرض القطعة على الـ Avatar" as R7 #F3EEFB
+  usecase "Select Garment and Size\nاختيار القطعة والمقاس" as R8 #F3EEFB
+  usecase "Get Size Recommendation\nالحصول على توصية بالمقاس" as R9 #F3EEFB
+  usecase "Compare Body and Garment Measurements\nمقارنة قياسات الجسم بقياسات القطعة" as R10 #F3EEFB
+  usecase "View Suggested Outfit Combinations\nعرض تنسيقات الملابس المقترحة" as R11 #F3EEFB
+
+  ' ===== Shared: Registered Customer + Shop Owner =====
+  usecase "Login\nتسجيل الدخول" as S1 #F1F1F1
+  usecase "Logout\nتسجيل الخروج" as S2 #F1F1F1
+
+  ' ===== Shop Owner =====
+  usecase "Register Shop Owner Account\nإنشاء حساب صاحب متجر" as O1 #EEF8F1
+  usecase "Register Store\nتسجيل متجر" as O2 #EEF8F1
+  usecase "Enter Store Information\nإدخال بيانات المتجر" as O2a #EEF8F1
+  usecase "Enter Contact Information\nإدخال معلومات التواصل" as O2b #EEF8F1
+  usecase "Set Store Location\nتحديد الموقع الجغرافي للمتجر" as O2c #EEF8F1
+  usecase "Add Social Media Links\nإضافة روابط التواصل الاجتماعي" as O2d #EEF8F1
+  usecase "Update Store Information\nتحديث بيانات المتجر" as O3 #EEF8F1
+  usecase "Update Store Details\nتحديث تفاصيل المتجر" as O3a #EEF8F1
+  usecase "Update Contact Information\nتحديث معلومات التواصل" as O3b #EEF8F1
+  usecase "Update Social Media Links\nتحديث روابط التواصل الاجتماعي" as O3c #EEF8F1
+  usecase "Update Store Location\nتحديث الموقع الجغرافي" as O3d #EEF8F1
+  usecase "Add Product\nإضافة منتج" as P0 #EEF8F1
+  usecase "Enter Product Name\nإدخال اسم المنتج" as P1 #EEF8F1
+  usecase "Enter Product Description\nإدخال وصف المنتج" as P2 #EEF8F1
+  usecase "Set Product Price\nتحديد سعر المنتج" as P3 #EEF8F1
+  usecase "Upload Front and Back Product Images\nرفع الصور الأمامية والخلفية للمنتج" as P4 #EEF8F1
+  usecase "Specify Available Sizes\nتحديد المقاسات المتاحة" as P5 #EEF8F1
+  usecase "Enter Measurements for Each Size\nإدخال قياسات كل مقاس" as P6 #EEF8F1
+  usecase "Set Available Quantities\nتحديد كميات المخزون" as P7 #EEF8F1
+  usecase "Link 3D Garment Model\nربط النموذج ثلاثي الأبعاد بالمنتج" as P8 #EEF8F1
+  usecase "Update Product Information\nتحديث بيانات المنتج" as U0 #EEF8F1
+  usecase "Update Product Name\nتحديث اسم المنتج" as U1 #EEF8F1
+  usecase "Update Product Description\nتحديث وصف المنتج" as U2 #EEF8F1
+  usecase "Update Product Price\nتحديث سعر المنتج" as U3 #EEF8F1
+  usecase "Update Product Images\nتحديث صور المنتج" as U4 #EEF8F1
+  usecase "Update Available Sizes\nتحديث المقاسات المتاحة" as U5 #EEF8F1
+  usecase "Update Measurements for Each Size\nتحديث قياسات كل مقاس" as U6 #EEF8F1
+  usecase "Update Available Quantities\nتحديث الكميات المتاحة" as U7 #EEF8F1
+  usecase "Update 3D Garment Model\nتحديث / استبدال النموذج ثلاثي الأبعاد" as U8 #EEF8F1
+  usecase "Delete Product\nحذف منتج" as D0 #EEF8F1
+}
+
+' ===== Associations =====
+V -- V1
+V -- V3
+V -- V5
+V -- V8
+V -- V9
+R -- S1
+R -- S2
+R -- R1
+R -- R2
+R -- R3
+R -- R5
+R -- R6
+R -- R9
+R -- R11
+O1 -- O
+O2 -- O
+O3 -- O
+S1 -- O
+S2 -- O
+P0 -- O
+U0 -- O
+D0 -- O
+
+' ===== include (base -> included) =====
+R3 .> R4 : <<include>>
+R6 .> R7 : <<include>>
+R6 .> R8 : <<include>>
+R9 .> R8 : <<include>>
+R9 .> R10 : <<include>>
+O2 .> O2a : <<include>>
+O2 .> O2b : <<include>>
+O2 .> O2c : <<include>>
+P0 .> P1 : <<include>>
+P0 .> P2 : <<include>>
+P0 .> P3 : <<include>>
+P0 .> P4 : <<include>>
+P0 .> P5 : <<include>>
+P0 .> P6 : <<include>>
+P0 .> P7 : <<include>>
+
+' ===== extend (extension -> base) =====
+V2 .> V1 : <<extend>>
+V4 .> V3 : <<extend>>
+V6 .> V5 : <<extend>>
+V7 .> V5 : <<extend>>
+O2d .> O2 : <<extend>>
+O3a .> O3 : <<extend>>
+O3b .> O3 : <<extend>>
+O3c .> O3 : <<extend>>
+O3d .> O3 : <<extend>>
+P8 .> P0 : <<extend>>
+U1 .> U0 : <<extend>>
+U2 .> U0 : <<extend>>
+U3 .> U0 : <<extend>>
+U4 .> U0 : <<extend>>
+U5 .> U0 : <<extend>>
+U6 .> U0 : <<extend>>
+U7 .> U0 : <<extend>>
+U8 .> U0 : <<extend>>
+
+' ===== Notes =====
+note right of V8
+  يشمل: الاسم، الوصف، السعر، الصور الأمامية والخلفية،
+  المقاسات المتاحة، قياسات كل مقاس، حالة التوفر
+end note
+note right of R6
+  شرط مسبق: Avatar محفوظ للزبون،
+  ونموذج ثلاثي الأبعاد جاهز للقطعة
+end note
+note right of R9
+  نتيجة تقديرية (لا تضمن دقة 100%):
+  مناسب / ضيق / واسع / غير مناسب
+  Suitable / Tight / Loose / Not Suitable
+end note
+note right of P8
+  بعد اكتمال بيانات المنتج وربط نموذجه تصبح القطعة
+  متاحة تلقائياً للمعاينة الافتراضية (لا يوجد تصدير)
+end note
+note right of O3
+  تحديث جزئي: كل عملية فرعية اختيارية
+  ويُنفَّذ منها ما يحتاجه صاحب المتجر فقط
+end note
+note right of U0
+  تحديث جزئي: كل عملية فرعية اختيارية
+  ويُنفَّذ منها ما يحتاجه صاحب المتجر فقط
+end note
+
+@enduml
